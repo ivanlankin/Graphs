@@ -77,33 +77,48 @@ void deikstra(int s, map<int, set<Edge>> g, int k, int u)
 	vector<vector<pair<int, int>>> p(n, vector<pair<int, int>>(k, { -1, -1 }));
 	d[s][0] = 0;
 	vector<int> used(n, 0);
-	set<pair<int, int>> q;
-	q.insert({ d[s][0], s });
+	set<pair<int, pair<int, int>>> q;
+	q.insert({ d[s][0], { s, 0 } });
 	while (!q.empty())
 	{
-		int v = q.begin()->second;
+		int v = q.begin()->second.first;
+		int f = q.begin()->first;
+		int pos = q.begin()->second.second;
 		q.erase(q.begin());
 		for (auto x : g[v])
 		{
 			int to = x.ver;
 			int len = x.weight;
-			if (used[to] < k && d[v][used[v]] + len < d[to][used[to]])
-			{
-				q.erase({ d[to][used[to]], to });
-				d[to][used[to]] = d[v][used[v]] + len;
-				p[to][used[to]] = { v, used[v] };
-				q.insert({ d[to][used[to]], to });
-			}
-		}
-		used[v]++;
-		if (used[v] < k)
-		{
-			q.insert({ INF, v });
+			for(int i = used[to]; i < k; i++)
+				if (f + len < d[to][i])
+				{
+					//q.erase({ d[to][used[to]], to });
+					for (int j = k - 2; j >= i; j--)
+					{
+						d[to][j+1] = d[to][j];
+						for (auto h : g[to])
+						{
+							for (int r = 0; r < k; r++)
+							{
+								if (p[h.ver][r] == make_pair(to, j)) {
+									p[h.ver][r].second = j + 1;
+								}
+							}
+						}
+						p[to][j+1] = p[to][j];
+						q.erase({ d[to][j], {to, j} });
+						q.insert({ d[to][j], {to, j+1} });
+					}
+					d[to][i] = f + len;
+					p[to][i] = { v, pos };
+					q.insert({ d[to][i], {to, i} });
+					break;
+				}
 		}
 	}
 	for (int i = 0; i < k; i++)
 	{
-		//cout << d[u][i] << endl;
+		cout << d[u][i] << endl;
 		if (d[u][i] != INF)
 		{
 			int cur_v = u, cur_u = i;
