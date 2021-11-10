@@ -23,6 +23,7 @@ using namespace std;
 Graph graph;
 vector<bool> used;
 bool flag = false;
+const int INF = 1e9;
 
 bool sml(pair<int, pair<int, int>> a, pair<int, pair<int, int>> b)
 {
@@ -68,6 +69,83 @@ bool bfs(int s, map<int, set<Edge>> g, int& cnt)
 	}
 	return true;
 }
+
+void deikstra(int s, map<int, set<Edge>> g, int k, int u)
+{
+	int n = g.size();
+	vector<vector<int>> d(n, vector<int>(k, INF));
+	vector<vector<pair<int, int>>> p(n, vector<pair<int, int>>(k, { -1, -1 }));
+	d[s][0] = 0;
+	vector<int> used(n, 0);
+	set<pair<int, int>> q;
+	q.insert({ d[s][0], s });
+	while (!q.empty())
+	{
+		int v = q.begin()->second;
+		q.erase(q.begin());
+		for (auto x : g[v])
+		{
+			int to = x.ver;
+			int len = x.weight;
+			if (used[to] < k && d[v][used[v]] + len < d[to][used[to]])
+			{
+				q.erase({ d[to][used[to]], to });
+				d[to][used[to]] = d[v][used[v]] + len;
+				p[to][used[to]] = { v, used[v] };
+				q.insert({ d[to][used[to]], to });
+			}
+		}
+		used[v]++;
+		if (used[v] < k)
+		{
+			q.insert({ INF, v });
+		}
+	}
+	for (int i = 0; i < k; i++)
+	{
+		//cout << d[u][i] << endl;
+		if (d[u][i] != INF)
+		{
+			int cur_v = u, cur_u = i;
+			vector<int> path;
+			while (cur_v != s || cur_u != 0)
+			{
+				path.push_back(cur_v);
+				int tmp = cur_v;
+				cur_v = p[cur_v][cur_u].first;
+				cur_u = p[tmp][cur_u].second;
+			}
+			path.push_back(0);
+			for (int j = path.size() - 1; j >= 0; j--)
+				cout << path[j] << " ";
+			cout << endl;
+		}
+	}
+}
+
+void floyd_warshall(map<int, set<Edge>> g) {
+	int n = g.size();
+	vector<vector<int>> d(n, vector<int>(n, INF));
+	for (int i = 0; i < n; i++)
+		for (auto y : g[i])
+			d[i][y.ver] = y.weight;
+	for (int i = 0; i < n; i++) d[i][i] = 0;
+	for (int k = 0; k < n; k++)
+		for (int i = 0; i < n; i++)
+			for (int j = 0; j < n; j++)
+				if (d[i][k] < INF && d[k][j] < INF && d[i][k] + d[k][j] < d[i][j])
+					d[i][j] = d[i][k] + d[k][j];
+	vector<int> m(n);
+	for (int i = 0; i < n; i++)
+		m[i] = *max_element(d[i].begin(), d[i].end());
+	int r = *min_element(m.begin(), m.end());
+	for (int i = 0; i < n; i++)
+		if (m[i] == r) cout << i << " ";
+	cout << endl;
+}
+
+
+
 
 void solve(string command, vector<string> args,  Graph& g)
 {
@@ -248,21 +326,21 @@ void solve(string command, vector<string> args,  Graph& g)
 		map<int, set<Edge>> res;
 
 		sort(g.begin(), g.end());
-		vector<int> tree_id(n);
+		vector<int> tr_id(n);
 		for (int i = 0; i < n; ++i)
-			tree_id[i] = i;
+			tr_id[i] = i;
 		for (auto x : g)
 		{
 			int a = x.second.first, b = x.second.second, l = x.first;
-			if (tree_id[a] != tree_id[b])
+			if (tr_id[a] != tr_id[b])
 			{
 				cost += l;
 				res[a].insert(Edge(b, l));
 				res[b].insert(Edge(a, l));
-				int old_id = tree_id[b], new_id = tree_id[a];
+				int old_id = tr_id[b], new_id = tr_id[a];
 				for (int j = 0; j < n; ++j)
-					if (tree_id[j] == old_id)
-						tree_id[j] = new_id;
+					if (tr_id[j] == old_id)
+						tr_id[j] = new_id;
 			}
 		}
 		auto lst = res;
@@ -282,6 +360,17 @@ void solve(string command, vector<string> args,  Graph& g)
 			cout << "]\n";
 		}
 	}
+	if (command == "ktovu")
+	{
+		int v = stoi(args[0]);
+		int u = stoi(args[1]);
+		int k = stoi(args[2]);
+		deikstra(v, graph.getList(), k, u);
+	}
+	if (command == "center")
+	{
+		floyd_warshall(graph.getList());
+	}
 }
 
 int main()
@@ -300,7 +389,7 @@ int main()
 	while (command != "end")
 	{
 		vector<string> args;
-		if (command != "getList" && command != "help" && command != "getLoops" && command != "NewOrgraph" && command != "cyclicality" && command != "istwv")
+		if (command != "getList" && command != "help" && command != "getLoops" && command != "NewOrgraph" && command != "cyclicality" && command != "istwv" && command != "center")
 		{
 			string line;
 			getline(cin, line);
