@@ -76,34 +76,50 @@ void deikstra(int s, map<int, set<Edge>> g, int k, int u)
 	vector<vector<int>> d(n, vector<int>(k, INF));
 	vector<vector<pair<int, int>>> p(n, vector<pair<int, int>>(k, { -1, -1 }));
 	d[s][0] = 0;
-	vector<int> used(n, 0);
-	set<pair<int, int>> q;
-	q.insert({ d[s][0], s });
+	set<pair<int, pair<int, int>>> q;
+	q.insert({ d[s][0], { s, 0 } });
 	while (!q.empty())
 	{
-		int v = q.begin()->second;
+		int v = q.begin()->second.first;
+		int f = q.begin()->first;
+		int pos = q.begin()->second.second;
 		q.erase(q.begin());
+		if (d[v][k - 1] < f)
+			continue;
 		for (auto x : g[v])
 		{
 			int to = x.ver;
 			int len = x.weight;
-			if (used[to] < k && d[v][used[v]] + len < d[to][used[to]])
-			{
-				q.erase({ d[to][used[to]], to });
-				d[to][used[to]] = d[v][used[v]] + len;
-				p[to][used[to]] = { v, used[v] };
-				q.insert({ d[to][used[to]], to });
-			}
-		}
-		used[v]++;
-		if (used[v] < k)
-		{
-			q.insert({ INF, v });
+			for(int i = 0; i < k; i++)
+				if (f + len < d[to][i])
+				{
+					//q.erase({ d[to][i], to });
+					for (int j = k - 2; j >= i; j--)
+					{
+						d[to][j+1] = d[to][j];
+						for (auto h : g[to])
+						{
+							for (int r = 0; r < k; r++)
+							{
+								if (p[h.ver][r] == make_pair(to, j)) {
+									p[h.ver][r].second = j + 1;
+								}
+							}
+						}
+						p[to][j+1] = p[to][j];
+						q.erase({ d[to][j], {to, j} });
+						q.insert({ d[to][j], {to, j+1} });
+					}
+					d[to][i] = f + len;
+					p[to][i] = { v, pos };
+					q.insert({ d[to][i], {to, i} });
+					break;
+				}
 		}
 	}
 	for (int i = 0; i < k; i++)
 	{
-		//cout << d[u][i] << endl;
+		cout << d[u][i] << endl;
 		if (d[u][i] != INF)
 		{
 			int cur_v = u, cur_u = i;
@@ -123,7 +139,7 @@ void deikstra(int s, map<int, set<Edge>> g, int k, int u)
 	}
 }
 
-void floyd_warshall(map<int, set<Edge>> g) {
+void floyd_warshall(map<int, set<Edge>> g, int p) {
 	int n = g.size();
 	vector<vector<int>> d(n, vector<int>(n, INF));
 	for (int i = 0; i < n; i++)
@@ -135,15 +151,88 @@ void floyd_warshall(map<int, set<Edge>> g) {
 			for (int j = 0; j < n; j++)
 				if (d[i][k] < INF && d[k][j] < INF && d[i][k] + d[k][j] < d[i][j])
 					d[i][j] = d[i][k] + d[k][j];
-	vector<int> m(n);
+	/*for (int i = 0; i < n; i++, cout << endl)
+		for (int j = 0; j < n; j++)
+			cout << d[i][j] << " ";*/
+	vector<int> s(n, 0);
 	for (int i = 0; i < n; i++)
-		m[i] = *max_element(d[i].begin(), d[i].end());
-	int r = *min_element(m.begin(), m.end());
+		for (int j = 0; j < n; j++)
+			if (d[i][j] < INF) s[i] += d[i][j];
 	for (int i = 0; i < n; i++)
-		if (m[i] == r) cout << i << " ";
+		if (s[i] <= p) cout << i << " " << s[i] << endl;
+}
+
+int ford_bellman(int u, map<int, set<Edge>> g) {
+	int n = g.size();
+	vector<int> d;
+	d.assign(n, INF);
+	d[u] = 0;
+	int x;
+	for (int iter = 0; iter < n; iter++) {
+		x = -1;
+		for (auto x : g)
+			for(auto y : g[x.first])
+				if (d[x.first] < INF && d[x.first] + y.weight < d[y.ver])
+					d[y.ver] = max(-INF, d[x.first] + y.weight);
+	}
+	int ans = -INF;
+	for (int i = 0; i < n; i++)
+		if (d[i] < INF && i != u) ans = max(ans, d[i]);
+	return ans;
+}
+
+template <typename T>
+void print(vector<T> out_arr)
+{
+	for (auto x : out_arr)
+		cout << x << " ";
 	cout << endl;
 }
 
+int dfs_ford(int u, int mx, int t, map<int, set<Edge>>& g) {
+	if (u == t) return mx;
+	if (mx == 0 || used[u]) return 0;
+	used[u] = true;
+	for (set<Edge>::iterator e = g[u].begin(); e != g[u].end(); e++) {
+		int r = (*e).weight - (*e).f;
+		int f = dfs_ford((*e).ver, min(r, mx), t, g);
+		if (f > 0) {
+			auto tmp = (*e);
+			g[u].erase(tmp);
+			g[u].insert(Edge(tmp.ver, tmp.weight, (tmp.f + f)));
+			for (set<Edge>::iterator x = g[tmp.ver].begin(); x != g[tmp.ver].end(); x++)
+				if ((*x).ver == u)
+				{
+					auto tmp = (*x);
+					g[u].erase((*x));
+					g[u].insert(Edge(tmp.ver, tmp.weight, (tmp.f + f)));
+				}
+			//cout << e.ver << " " << e.f << endl;
+			return f;
+		}
+	}
+	return 0;
+}
+
+
+int ford_fulkerson(int s, int t, map<int, set<Edge>> g) {
+	int n = g.size();
+	int resF = 0;
+	while (true) {
+		used.assign(n, false);
+		int f = dfs_ford(s, INF, t, g);
+		if (f == 0) break;
+		resF += f;
+		/*for (auto x : g)
+		{
+			cout << x.first << " ";
+			for (auto y : g[x.first])
+				cout << y.f << " ";
+			cout << endl;
+		}*/
+	}
+	return resF;
+}
 
 
 
@@ -369,7 +458,30 @@ void solve(string command, vector<string> args,  Graph& g)
 	}
 	if (command == "center")
 	{
-		floyd_warshall(graph.getList());
+		auto lst = graph.getList();
+		vector<int> rad(lst.size());
+		int ans = INF;
+		for (auto x : lst)
+		{
+			rad[x.first] = ford_bellman(x.first, lst);
+			if (rad[x.first] > -INF)
+				ans = min(ans, rad[x.first]);
+		}
+		for (auto x : lst)
+			cout << rad[x.first] << " ";
+		cout << endl;
+		for (auto x : lst)
+			if (rad[x.first] == ans)
+				cout << x.first << " ";
+		cout << endl;
+	}
+	if (command == "ltp")
+	{
+		floyd_warshall(graph.getList(), stoi(args[0]));
+	}
+	if (command == "flow")
+	{
+		cout << ford_fulkerson(stoi(args[0]), stoi(args[1]), graph.getList()) << endl;
 	}
 }
 
