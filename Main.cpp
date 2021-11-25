@@ -181,14 +181,6 @@ int ford_bellman(int u, map<int, set<Edge>> g) {
 	return ans;
 }
 
-template <typename T>
-void print(vector<T> out_arr)
-{
-	for (auto x : out_arr)
-		cout << x << " ";
-	cout << endl;
-}
-
 int dfs_ford(int u, int mx, int t, map<int, set<Edge>>& g) {
 	if (u == t) return mx;
 	if (mx == 0 || used[u]) return 0;
@@ -201,12 +193,15 @@ int dfs_ford(int u, int mx, int t, map<int, set<Edge>>& g) {
 			g[u].erase(tmp);
 			g[u].insert(Edge(tmp.ver, tmp.weight, (tmp.f + f)));
 			for (set<Edge>::iterator x = g[tmp.ver].begin(); x != g[tmp.ver].end(); x++)
+			{
 				if ((*x).ver == u)
 				{
-					auto tmp = (*x);
-					g[u].erase((*x));
-					g[u].insert(Edge(tmp.ver, tmp.weight, (tmp.f + f)));
+					auto tmp1 = (*x);
+					g[tmp.ver].erase(tmp1);
+					g[tmp.ver].insert(Edge(tmp1.ver, tmp1.weight, (tmp1.f - f)));
+					break;
 				}
+			}
 			//cout << e.ver << " " << e.f << endl;
 			return f;
 		}
@@ -218,16 +213,38 @@ int dfs_ford(int u, int mx, int t, map<int, set<Edge>>& g) {
 int ford_fulkerson(int s, int t, map<int, set<Edge>> g) {
 	int n = g.size();
 	int resF = 0;
+	for (int u = 0; u < n; u++)
+		for (set<Edge>::iterator e = g[u].begin(); e != g[u].end(); e++)
+			if ((*e).ver != u)
+				g[(*e).ver].insert(Edge(u, 0, 0));
+	/*set<int> vertices;
+	set<pair<int, pair<int, int>>> edges;
+	for (auto x : g)
+	{
+		vertices.insert(x.first);
+	}
+	for (auto v : vertices)
+	{
+		cout << v << ": [ ";
+		for (auto e : g[v])
+		{
+			cout << e.ver;
+			cout << "(" << e.weight << ")";
+			cout << " ";
+		}
+		cout << "]\n";
+	}*/
 	while (true) {
 		used.assign(n, false);
 		int f = dfs_ford(s, INF, t, g);
+		/*cout << f << endl;*/
 		if (f == 0) break;
 		resF += f;
 		/*for (auto x : g)
 		{
 			cout << x.first << " ";
 			for (auto y : g[x.first])
-				cout << y.f << " ";
+				cout << y.ver << "(" << y.f << ") ";
 			cout << endl;
 		}*/
 	}
